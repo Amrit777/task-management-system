@@ -5,7 +5,7 @@ const { sequelize } = require("../config/db");
 const Task = sequelize.define("Task", {
   title: { type: DataTypes.STRING, allowNull: false },
   description: { type: DataTypes.TEXT },
-  attachments: { type: DataTypes.JSON, allowNull: true }, // store an array of file URLs
+  // attachments: { type: DataTypes.JSON, allowNull: true }, // store an array of file URLs
   startDate: { type: DataTypes.DATE },
   estimatedTime: { type: DataTypes.FLOAT }, // in hours
   estimatedEndDate: { type: DataTypes.DATE },

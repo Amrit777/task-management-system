@@ -1,47 +1,61 @@
-// client/src/App.js
 import React from "react";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom"; // Use Routes instead of Switch
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Login from "./components/auth/Login";
 import Dashboard from "./components/dashboard/Dashboard";
 import TaskBoard from "./components/tasks/TaskBoard";
-import Layout from "./components/layout/Layout";
 import TaskForm from "./components/tasks/TaskForm";
+import Layout from "./components/layout/Layout";
 
-function App() {
+const App = () => {
   return (
     <Router>
-      <Layout>
-        <Routes>
-          <Route path="/login" element={<Login />} />{" "}
-          {/* Use element instead of component */}
-          {/* Protect these routes appropriately */}
-          <Route path="/dashboard" element={<Dashboard />} />{" "}
-          {/* Use element */}
-          <Route path="/tasks" element={<TaskBoard />} /> {/* Use element */}
-          <Route
-            path="/tasks/new"
-            element={
-              <Layout>
-                <TaskForm isEditing={false} />
-              </Layout>
-            }
-          />
-          <Route
-            path="/tasks/edit/:id"
-            element={
-              <Layout>
-                <TaskForm isEditing={true} />
-              </Layout>
-            }
-          />
-          <Route
-            path="/"
-            element={<div>Welcome to Task Manager! Please Login.</div>}
-          />
-        </Routes>
-      </Layout>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+
+        {/* Protected routes inside layout */}
+        <Route
+          path="/"
+          element={
+            <Layout>
+              <Dashboard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <Layout>
+              <Dashboard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/tasks"
+          element={
+            <Layout>
+              <TaskBoard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/tasks/create"
+          element={
+            <Layout>
+              <TaskForm />
+            </Layout>
+          }
+        />
+        <Route
+          path="/tasks/edit/:id"
+          element={
+            <Layout>
+              <TaskForm isEditing={true} />
+            </Layout>
+          }
+        />
+      </Routes>
     </Router>
   );
-}
+};
 
 export default App;
