@@ -1,7 +1,7 @@
 import React from 'react';
 
 const Header = () => (
-  <header className="flex justify-between items-center bg-white border-b h-16 px-6 shadow fixed w-full left-64">
+  <header className="sticky top-0 z-10 bg-white border-b h-16 px-6 shadow flex justify-between items-center">
     <div className="text-lg font-semibold">Welcome Back!</div>
     <div className="relative">
       <button className="flex items-center space-x-2 text-sm font-medium">

@@ -1,14 +1,14 @@
-import React from 'react';
-import Sidebar from './Sidebar';
-import Header from './Header';
-import Footer from './Footer';
+import React from "react";
+import Sidebar from "./Sidebar";
+import Header from "./Header";
+import Footer from "./Footer";
 
 const Layout = ({ children }) => (
-  <div>
+  <div className="flex h-screen overflow-hidden">
     <Sidebar />
-    <div className="ml-64">
+    <div className="flex flex-col flex-1 overflow-hidden">
       <Header />
-      <main className="mt-16 p-6 min-h-screen bg-gray-50">{children}</main>
+      <main className="flex-1 overflow-y-auto p-6 bg-gray-50">{children}</main>
       <Footer />
     </div>
   </div>

@@ -1,8 +1,8 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React from "react";
+import { Link } from "react-router-dom";
 
 const Sidebar = () => (
-  <aside className="w-64 h-screen bg-gray-800 text-white fixed">
+  <aside className="w-64 h-screen bg-gray-800 text-white flex-shrink-0">
     <div className="p-4 text-xl font-bold border-b border-gray-700">
       Task Manager
     </div>
