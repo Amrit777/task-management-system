@@ -5,17 +5,39 @@ import Login from "./components/auth/Login";
 import Dashboard from "./components/dashboard/Dashboard";
 import TaskBoard from "./components/tasks/TaskBoard";
 import Layout from "./components/layout/Layout";
+import TaskForm from "./components/tasks/TaskForm";
 
 function App() {
   return (
     <Router>
       <Layout>
         <Routes>
-          <Route path="/login" element={<Login />} /> {/* Use element instead of component */}
+          <Route path="/login" element={<Login />} />{" "}
+          {/* Use element instead of component */}
           {/* Protect these routes appropriately */}
-          <Route path="/dashboard" element={<Dashboard />} /> {/* Use element */}
+          <Route path="/dashboard" element={<Dashboard />} />{" "}
+          {/* Use element */}
           <Route path="/tasks" element={<TaskBoard />} /> {/* Use element */}
-          <Route path="/" element={<div>Welcome to Task Manager! Please Login.</div>} />
+          <Route
+            path="/tasks/new"
+            element={
+              <Layout>
+                <TaskForm isEditing={false} />
+              </Layout>
+            }
+          />
+          <Route
+            path="/tasks/edit/:id"
+            element={
+              <Layout>
+                <TaskForm isEditing={true} />
+              </Layout>
+            }
+          />
+          <Route
+            path="/"
+            element={<div>Welcome to Task Manager! Please Login.</div>}
+          />
         </Routes>
       </Layout>
     </Router>

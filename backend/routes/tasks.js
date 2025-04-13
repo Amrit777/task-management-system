@@ -1,17 +1,26 @@
 // backend/routes/tasks.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { protect, authorize } = require('../middleware/authMiddleware');
-const { createTask, getTasks, updateTask, deleteTask } = require('../controllers/taskController');
+const upload = require("../utils/fileUpload"); // Multer middleware
+const { protect } = require("../middleware/authMiddleware");
+const {
+  createTask,
+  getTasks,
+  getTaskById,
+  updateTask,
+  deleteTask,
+} = require("../controllers/taskController");
 
-router
-  .route('/')
-  .post(protect, authorize('admin', 'project_manager', 'developer'), createTask)
-  .get(protect, getTasks);
-
-router
-  .route('/:id')
-  .put(protect, authorize('admin', 'project_manager', 'developer'), updateTask)
-  .delete(protect, authorize('admin', 'project_manager'), deleteTask);
+// Protect these routes with your authentication middleware
+router.post(
+  "/",
+  protect,
+  upload.array("attachments"), // expect field name "attachments", allowing multiple files
+  createTask
+);
+router.get("/", protect, getTasks);
+router.get("/:id", protect, getTaskById);
+router.put("/:id", protect, updateTask);
+router.delete("/:id", protect, deleteTask);
 
 module.exports = router;

@@ -23,6 +23,8 @@ app.use('/api/projects', require('./routes/projects'));
 app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/comments', require('./routes/comments'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/uploads', express.static('uploads'));
+
 // Optionally, add file upload endpoints here
 
 // Global Error Handler
