@@ -3,20 +3,45 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Login from './components/auth/Login';
 import Dashboard from './components/dashboard/Dashboard';
 import TaskBoard from './components/tasks/TaskBoard';
-import Register from './components/auth/Register';
+import ProjectList from './components/projects/ProjectList';
+import Layout from './components/layout/Layout';
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
-        {/* Protect these routes later with PrivateRoute or auth logic */}
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/tasks" element={<TaskBoard />} />
-        <Route path="/register" element={<Register />} />
+        <Route
+          path="/dashboard"
+          element={
+            <Layout>
+              <Dashboard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/tasks"
+          element={
+            <Layout>
+              <TaskBoard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/projects"
+          element={
+            <Layout>
+              <ProjectList />
+            </Layout>
+          }
+        />
         <Route
           path="/"
-          element={<div>Welcome to Task Manager! Please Login.</div>}
+          element={
+            <div className="flex items-center justify-center h-screen">
+              <div className="text-2xl">Welcome to Task Manager! Please Login.</div>
+            </div>
+          }
         />
       </Routes>
     </Router>
