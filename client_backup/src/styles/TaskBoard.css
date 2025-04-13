@@ -1,0 +1,61 @@
+/* client/src/components/tasks/TaskBoard.css */
+
+.task-board-container {
+  margin-top: 20px;
+}
+
+.task-board-header {
+  font-size: 2rem;
+  color: #333;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.task-list {
+  display: flex;
+  justify-content: space-between;
+}
+
+.task-column {
+  width: 30%;
+  background-color: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.task-column h3 {
+  text-align: center;
+  color: #4CAF50;
+}
+
+.task-item {
+  background-color: #f9f9f9;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.task-item p {
+  margin: 10px 0;
+  color: #777;
+}
+
+.task-item .status {
+  font-weight: bold;
+  color: #4CAF50;
+}
+
+.task-item button {
+  padding: 5px 10px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.task-item button:hover {
+  background-color: #45a049;
+}
