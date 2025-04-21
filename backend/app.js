@@ -91,6 +91,7 @@ app.use("/api/tasks", require("./routes/tasks"));
 app.use("/api/comments", require("./routes/comments"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/uploads", express.static("uploads"));
+app.use("/api/users", require("./routes/users"));
 
 // Optionally, add file upload endpoints here
 
