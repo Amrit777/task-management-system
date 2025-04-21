@@ -2,6 +2,7 @@
 const { Task, TaskHistory, User } = require("../models");
 
 exports.createTask = async (req, res, next) => {
+  console.log("request.body", req.body);
   try {
     const {
       title,
@@ -36,7 +37,7 @@ exports.createTask = async (req, res, next) => {
       actualEndDate,
       assignedTo: assignedTo || createdBy, // default to self if not provided
       createdBy,
-      status: "To Do",
+      status: "todo",
       priority,
       dueDate,
       assignedTo,
@@ -92,12 +93,37 @@ exports.getTaskById = async (req, res, next) => {
     next(error);
   }
 };
+
+// Normalize user-friendly status to DB-friendly
+const normalizeStatus = (status) => {
+  const map = {
+    "To Do": "todo",
+    "In Progress": "in-progress",
+    Completed: "completed",
+  };
+  return map[status] || status;
+};
 exports.updateTask = async (req, res, next) => {
+  console.log("req.body...", req);
+  const { status } = req.body;
+  console.log("status...", status);
+  const normalizedStatus = normalizeStatus(status);
   try {
+    console.log("normalizedStatus...", normalizedStatus);
+
     const task = await Task.findByPk(req.params.id);
     if (!task) return res.status(404).json({ message: "Task not found" });
 
     const oldValues = task.toJSON();
+
+    console.log("oldValues...", oldValues);
+
+    // Normalize status if it's being updated
+    if (req.body.status) {
+      console.log("req.body.status1...", req.body.status);
+      req.body.status = normalizeStatus(req.body.status);
+      console.log("req.body.status2...", req.body.status);
+    }
 
     await task.update(req.body);
 
@@ -132,5 +158,35 @@ exports.deleteTask = async (req, res, next) => {
     res.json({ message: "Task deleted successfully" });
   } catch (error) {
     next(error);
+  }
+};
+
+exports.checkTitle = async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const { title, excludeId } = req.query;
+
+    if (!title) {
+      return res
+        .status(400)
+        .json({ message: "Query parameter `title` is required" });
+    }
+
+    const existing = await Task.findOne({
+      where: {
+        projectId,
+        title: title.trim(),
+      },
+    });
+
+    // If found, but it's the same record we're editing, it's fine
+    if (existing && excludeId && existing.id.toString() === excludeId) {
+      return res.json({ available: true });
+    }
+
+    // Otherwise, available only if no existing record
+    return res.json({ available: existing ? false : true });
+  } catch (err) {
+    next(err);
   }
 };

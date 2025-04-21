@@ -1,25 +1,40 @@
-// backend/models/task.js
-const { DataTypes } = require("sequelize");
-const { sequelize } = require("../config/db");
+module.exports = (sequelize, DataTypes) => {
+  const Task = sequelize.define("Task", {
+    title: { type: DataTypes.STRING, allowNull: false },
+    description: { type: DataTypes.TEXT },
+    startDate: { type: DataTypes.DATE },
+    estimatedTime: { type: DataTypes.FLOAT },
+    estimatedEndDate: { type: DataTypes.DATE },
+    actualEndDate: { type: DataTypes.DATE },
+    status: {
+      type: DataTypes.ENUM("todo", "in-progress", "completed"),
+      allowNull: false,
+      defaultValue: "todo",
+    },
+    priority: {
+      type: DataTypes.ENUM("Low", "Medium", "High"),
+      defaultValue: "Medium",
+    },
+    dueDate: { type: DataTypes.DATE },
+  });
 
-const Task = sequelize.define("Task", {
-  title: { type: DataTypes.STRING, allowNull: false },
-  description: { type: DataTypes.TEXT },
-  // attachments: { type: DataTypes.JSON, allowNull: true }, // store an array of file URLs
-  startDate: { type: DataTypes.DATE },
-  estimatedTime: { type: DataTypes.FLOAT }, // in hours
-  estimatedEndDate: { type: DataTypes.DATE },
-  actualEndDate: { type: DataTypes.DATE },
-  status: {
-    type: DataTypes.ENUM("To Do", "In Progress", "Completed"),
-    defaultValue: "To Do",
-  },
-  priority: {
-    type: DataTypes.ENUM("Low", "Medium", "High"),
-    defaultValue: "Medium",
-  },
-  dueDate: { type: DataTypes.DATE },
-  // Foreign keys for user relationships are set up in associations
-});
+  Task.associate = (models) => {
+    Task.belongsTo(models.User, {
+      as: "assignedToUser",
+      foreignKey: "assignedTo",
+    });
+    Task.belongsTo(models.User, {
+      as: "createdByUser",
+      foreignKey: "createdBy",
+    });
+    Task.belongsTo(models.Project, { foreignKey: "projectId" });
+    Task.hasMany(models.Comment, { foreignKey: "taskId" });
+    Task.hasMany(models.Attachment, { foreignKey: "taskId" });
+    Task.hasMany(models.TaskHistory, {
+      foreignKey: "taskId",
+      onDelete: "CASCADE",
+    });
+  };
 
-module.exports = Task;
+  return Task;
+};

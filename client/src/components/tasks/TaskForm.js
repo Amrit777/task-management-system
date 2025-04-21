@@ -1,76 +1,130 @@
-import React, { useState, useEffect } from "react";
-import API from "../../api";
+// client/src/components/tasks/TaskForm.js
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import ReactQuill from "react-quill";
+import { useDropzone } from "react-dropzone";
+import API from "../../api";
+import "react-quill/dist/quill.snow.css";
 
 const TaskForm = ({ isEditing = false }) => {
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    startDate: "",
-    estimatedTime: "",
-    estimatedEndDate: "",
-    actualEndDate: "",
-    assignedTo: "",
-    priority: "Medium",
-    dueDate: "",
-    projectId: "",
-    status: "To Do",
-    createdBy: "current_user_id", // TODO: pull from auth context
-  });
-
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [assignType, setAssignType] = useState("Myself");
-
   const navigate = useNavigate();
   const { id } = useParams();
 
+  // TODO: Replace with real auth context / token decode
+  const currentUserId = 1;
+
+  const [projects, setProjects] = useState([]);
+  const [titleAvailable, setTitleAvailable] = useState(true);
+  const [checkingTitle, setCheckingTitle] = useState(false);
+
+  const [form, setForm] = useState({
+    projectId: "",
+    title: "",
+    description: "",
+    attachments: [], // array of File objects
+    estimatedEndDate: "",
+    estimatedTime: "",
+    priority: "Medium",
+    assignedTo: currentUserId,
+    dueDate: "",
+  });
+
+  // Load list of projects
+  useEffect(() => {
+    API.get("/projects")
+      .then((res) => setProjects(res.data))
+      .catch(console.error);
+  }, []);
+
+  // If editing, load existing task
   useEffect(() => {
     if (isEditing && id) {
       API.get(`/tasks/${id}`)
         .then((res) => {
-          const task = res.data;
+          const t = res.data;
           setForm({
-            ...task,
-            startDate: task.startDate?.split("T")[0] || "",
-            estimatedEndDate: task.estimatedEndDate?.split("T")[0] || "",
-            actualEndDate: task.actualEndDate?.split("T")[0] || "",
-            dueDate: task.dueDate?.split("T")[0] || "",
+            projectId: t.projectId,
+            title: t.title,
+            description: t.description,
+            attachments: [], // we won't preload existing attachments into dropzone
+            estimatedEndDate: t.estimatedEndDate?.split("T")[0] || "",
+            estimatedTime: t.estimatedTime,
+            priority: t.priority,
+            assignedTo: t.assignedTo || currentUserId,
+            dueDate: t.dueDate?.split("T")[0] || "",
           });
         })
         .catch(console.error);
     }
   }, [isEditing, id]);
 
+  // Title uniqueness check
+  useEffect(() => {
+    const { projectId, title } = form;
+    if (!projectId || !title) return setTitleAvailable(true);
+
+    setCheckingTitle(true);
+    // You need an endpoint: GET /projects/:projectId/tasks/title-check?title=...
+    API.get(`/projects/${projectId}/tasks/title-check`, {
+      params: { title },
+    })
+      .then((res) => {
+        setTitleAvailable(res.data.available);
+      })
+      .catch(() => {
+        setTitleAvailable(false);
+      })
+      .finally(() => setCheckingTitle(false));
+  }, [form.projectId, form.title]);
+
+  // Dropzone for attachments
+  const onDrop = useCallback((acceptedFiles) => {
+    setForm((f) => ({
+      ...f,
+      attachments: [...f.attachments, ...acceptedFiles],
+    }));
+  }, []);
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+
+  // Handle input changes
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((f) => ({ ...f, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
-    setSelectedFiles(e.target.files);
+  // Rich-text handler
+  const handleDescriptionChange = (value) => {
+    setForm((f) => ({ ...f, description: value }));
   };
 
+  // Submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!titleAvailable) {
+      alert("Task title already exists in this project.");
+      return;
+    }
     try {
-      const formData = new FormData();
+      const data = new FormData();
+      Object.entries({
+        projectId: form.projectId,
+        title: form.title,
+        description: form.description,
+        estimatedEndDate: form.estimatedEndDate,
+        estimatedTime: form.estimatedTime,
+        priority: form.priority,
+        assignedTo: form.assignedTo,
+        dueDate: form.dueDate,
+      }).forEach(([k, v]) => data.append(k, v));
 
-      Object.entries(form).forEach(([key, value]) => {
-        formData.append(key, value);
-      });
+      form.attachments.forEach((file) => data.append("attachments", file));
 
-      for (let i = 0; i < selectedFiles.length; i++) {
-        formData.append("attachments", selectedFiles[i]);
-      }
-
-      if (isEditing && id) {
-        await API.put(`/tasks/${id}`, formData);
-      } else {
-        await API.post("/tasks", formData);
-      }
+      if (isEditing) await API.put(`/tasks/${id}`, data);
+      else await API.post("/tasks", data);
 
       navigate("/tasks");
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
       alert("Error submitting task");
     }
   };
@@ -80,11 +134,31 @@ const TaskForm = ({ isEditing = false }) => {
       <h2 className="text-2xl mb-4 font-semibold">
         {isEditing ? "Edit Task" : "Create New Task"}
       </h2>
+
       <form
         onSubmit={handleSubmit}
         encType="multipart/form-data"
-        className="space-y-4"
+        className="space-y-6"
       >
+        {/* Project */}
+        <div>
+          <label className="block mb-1 font-medium">Project</label>
+          <select
+            name="projectId"
+            value={form.projectId}
+            onChange={handleChange}
+            required
+            className="w-full p-2 border rounded"
+          >
+            <option value="">— Select Project —</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Task Title */}
         <div>
           <label className="block mb-1 font-medium">Task Title</label>
@@ -93,75 +167,65 @@ const TaskForm = ({ isEditing = false }) => {
             name="title"
             value={form.title}
             onChange={handleChange}
-            className="w-full p-2 border rounded"
             required
+            className="w-full p-2 border rounded"
           />
+          {checkingTitle ? (
+            <p className="text-sm text-gray-500">Checking title…</p>
+          ) : !titleAvailable ? (
+            <p className="text-sm text-red-600">
+              Title already used in this project
+            </p>
+          ) : null}
         </div>
 
         {/* Description */}
         <div>
           <label className="block mb-1 font-medium">Description</label>
-          <textarea
-            name="description"
+          <ReactQuill
+            theme="snow"
             value={form.description}
-            onChange={handleChange}
-            className="w-full p-2 border rounded"
+            onChange={handleDescriptionChange}
+            className="bg-white"
           />
         </div>
 
         {/* Attachments */}
         <div>
           <label className="block mb-1 font-medium">Attachments</label>
-          <input
-            type="file"
-            name="attachments"
-            multiple
-            onChange={handleFileChange}
-          />
+          <div
+            {...getRootProps()}
+            className={`border-2 border-dashed p-6 text-center rounded cursor-pointer ${
+              isDragActive ? "border-blue-500 bg-blue-50" : "border-gray-300"
+            }`}
+          >
+            <input {...getInputProps()} />
+            <p className="text-gray-600">
+              {isDragActive
+                ? "Drop files here…"
+                : "Drag & drop files here, or click to browse"}
+            </p>
+          </div>
+          {form.attachments.length > 0 && (
+            <ul className="mt-2 text-sm text-gray-700">
+              {form.attachments.map((f, i) => (
+                <li key={i}>{f.name}</li>
+              ))}
+            </ul>
+          )}
         </div>
 
-        {/* Dates */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block mb-1 font-medium">Start Date</label>
-            <input
-              type="date"
-              name="startDate"
-              value={form.startDate}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block mb-1 font-medium">Estimated End Date</label>
-            <input
-              type="date"
-              name="estimatedEndDate"
-              value={form.estimatedEndDate}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block mb-1 font-medium">Actual End Date</label>
-            <input
-              type="date"
-              name="actualEndDate"
-              value={form.actualEndDate}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-            />
-          </div>
-          <div>
-            <label className="block mb-1 font-medium">Due Date</label>
-            <input
-              type="date"
-              name="dueDate"
-              value={form.dueDate}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-            />
-          </div>
+        {/* Estimated End Date */}
+        <div>
+          <label className="block mb-1 font-medium">Estimated End Date</label>
+          <input
+            type="date"
+            name="estimatedEndDate"
+            value={form.estimatedEndDate}
+            onChange={handleChange}
+            required
+            className="w-full p-2 border rounded"
+          />
         </div>
 
         {/* Estimated Time */}
@@ -193,49 +257,47 @@ const TaskForm = ({ isEditing = false }) => {
           </select>
         </div>
 
-        {/* Assigned To */}
+        {/* Assign To */}
         <div>
           <label className="block mb-1 font-medium">Assign To</label>
           <select
-            value={assignType}
-            onChange={(e) => setAssignType(e.target.value)}
+            name="assignedTo"
+            value={form.assignedTo}
+            onChange={handleChange}
             className="w-full p-2 border rounded"
           >
-            <option value="Myself">Myself</option>
-            <option value="Others">Others</option>
+            <option value={currentUserId}>Myself</option>
+            {/* You can populate other users here if needed */}
           </select>
-
-          {assignType === "Others" && (
-            <input
-              type="text"
-              placeholder="Search & select user"
-              name="assignedTo"
-              value={form.assignedTo}
-              onChange={handleChange}
-              className="mt-2 w-full p-2 border rounded"
-            />
-          )}
         </div>
 
-        {/* Project ID */}
+        {/* Due Date */}
         <div>
-          <label className="block mb-1 font-medium">Project ID</label>
+          <label className="block mb-1 font-medium">
+            Due Date <span className="text-sm text-gray-500">(optional)</span>
+          </label>
           <input
-            type="text"
-            name="projectId"
-            value={form.projectId}
+            type="date"
+            name="dueDate"
+            value={form.dueDate}
             onChange={handleChange}
             className="w-full p-2 border rounded"
           />
+          <p className="text-xs text-gray-500 mt-1">
+            Use as a reminder deadline for notifications—does not affect
+            progress.
+          </p>
         </div>
 
-        {/* Submit Button */}
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-600 text-white rounded"
-        >
-          {isEditing ? "Update Task" : "Create Task"}
-        </button>
+        {/* Submit */}
+        <div>
+          <button
+            type="submit"
+            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            {isEditing ? "Update Task" : "Create Task"}
+          </button>
+        </div>
       </form>
     </div>
   );
