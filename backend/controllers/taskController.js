@@ -2,7 +2,6 @@
 const { Task, TaskHistory, User } = require("../models");
 
 exports.createTask = async (req, res, next) => {
-  console.log("request.body", req.body);
   try {
     const {
       title,
@@ -18,6 +17,20 @@ exports.createTask = async (req, res, next) => {
       actualEndDate,
     } = req.body;
 
+    console.log(
+      "request.body",
+      title,
+      description,
+      status,
+      priority,
+      dueDate,
+      assignedTo,
+      projectId,
+      startDate,
+      estimatedTime,
+      estimatedEndDate,
+      actualEndDate
+    );
     // Get attachments file URLs from req.files (if provided)
     let attachments = [];
     if (req.files) {
@@ -104,7 +117,6 @@ const normalizeStatus = (status) => {
   return map[status] || status;
 };
 exports.updateTask = async (req, res, next) => {
-  console.log("req.body...", req);
   const { status } = req.body;
   console.log("status...", status);
   const normalizedStatus = normalizeStatus(status);
