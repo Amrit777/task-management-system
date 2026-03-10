@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: tms-db
+    environment:
+      POSTGRES_USER: tms_user
+      POSTGRES_PASSWORD: tms_password
+      POSTGRES_DB: taskmanager
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tms_user -d taskmanager"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: tms-backend
+    ports:
+      - "8005:8005"
+    environment:
+      - PORT=8005
+      - DB_HOST=db
+      - DB_USER=tms_user
+      - DB_PASSWORD=tms_password
+      - DB_NAME=taskmanager
+      - DB_DIALECT=postgres
+      - JWT_SECRET=tms_jwt_secret_key_2026
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+
+  frontend:
+    build: ./frontend
+    container_name: tms-frontend
+    ports:
+      - "3005:3005"
+    environment:
+      - VITE_API_URL=http://localhost:8005/api
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
