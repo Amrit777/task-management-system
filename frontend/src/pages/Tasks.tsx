@@ -118,12 +118,12 @@ const Tasks = () => {
                 >
                   <TableCell className="font-medium">{task.title}</TableCell>
                   <TableCell>
-                    <Badge variant={priorityColor(task.priority) as any}>
+                    <Badge variant={priorityColor(task.priority)}>
                       {task.priority}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={statusColor(task.status) as any}>
+                    <Badge variant={statusColor(task.status)}>
                       {displayStatus(task.status)}
                     </Badge>
                   </TableCell>

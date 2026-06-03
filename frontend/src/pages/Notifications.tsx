@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronDown, ChevronUp, Bell, CheckCheck } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import API from "@/api";
+import { Task } from "@/types";
 
 interface Notification {
   id: number;
@@ -27,7 +28,7 @@ const Notifications = () => {
         // Try real endpoint; fall back to generating from recent tasks
         const res = await API.get("/tasks");
         const tasks = res.data.data ?? res.data ?? [];
-        const generated: Notification[] = tasks.slice(0, 20).map((t: any, i: number) => ({
+        const generated: Notification[] = tasks.slice(0, 20).map((t: Task, i: number) => ({
           id: t.id,
           title: i % 3 === 0
             ? "Task assigned: " + t.title

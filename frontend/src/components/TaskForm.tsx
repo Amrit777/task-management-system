@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 import API from "../api";
+import { getApiErrorMessage } from "@/lib/utils";
 
 interface TaskFormProps {
   onSubmit: () => void;
@@ -75,10 +76,10 @@ const TaskForm = ({ onSubmit, initialData }: TaskFormProps) => {
       });
       toast({ title: "Task created successfully" });
       onSubmit();
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: "Failed to create task",
-        description: err.response?.data?.message || "Something went wrong",
+        description: getApiErrorMessage(err),
         variant: "destructive",
       });
     } finally {

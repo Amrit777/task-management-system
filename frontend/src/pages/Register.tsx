@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { getApiErrorMessage } from "@/lib/utils";
 
 const Register = () => {
   const [name, setName] = useState("");
@@ -31,10 +32,10 @@ const Register = () => {
     try {
       await register(name, email, password);
       navigate("/");
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: "Registration failed",
-        description: err.response?.data?.message || "Something went wrong",
+        description: getApiErrorMessage(err),
         variant: "destructive",
       });
     } finally {

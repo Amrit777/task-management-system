@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { getApiErrorMessage } from "@/lib/utils";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -21,10 +22,10 @@ const Login = () => {
     try {
       await login(email, password);
       navigate("/");
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: "Login failed",
-        description: err.response?.data?.message || "Invalid credentials",
+        description: getApiErrorMessage(err, "Invalid credentials"),
         variant: "destructive",
       });
     } finally {

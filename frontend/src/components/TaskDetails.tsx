@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import API from "../api";
-import { Task, displayStatus } from "../types";
+import { Task, Comment, displayStatus } from "../types";
+import { getApiErrorMessage } from "@/lib/utils";
 
 interface TaskDetailsProps {
   task: Task;
@@ -24,7 +25,7 @@ const TaskDetails = ({ task, onTaskUpdate }: TaskDetailsProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTask, setEditedTask] = useState<Task>({ ...task });
   const [loading, setLoading] = useState(false);
-  const [comments, setComments] = useState<any[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const { toast } = useToast();
 
@@ -33,13 +34,15 @@ const TaskDetails = ({ task, onTaskUpdate }: TaskDetailsProps) => {
       try {
         const res = await API.get("/comments/" + task.id);
         setComments(res.data);
-      } catch {}
+      } catch {
+        // Comments are non-critical; ignore load failures.
+      }
     };
     fetchComments();
   }, [task.id]);
 
-  const handleChange = (field: keyof Task, value: any) => {
-    setEditedTask({ ...editedTask, [field]: value });
+  const handleChange = (field: keyof Task, value: string) => {
+    setEditedTask((prev) => ({ ...prev, [field]: value }) as Task);
   };
 
   const handleSave = async () => {
@@ -56,10 +59,10 @@ const TaskDetails = ({ task, onTaskUpdate }: TaskDetailsProps) => {
       toast({ title: "Task updated successfully" });
       setIsEditing(false);
       onTaskUpdate?.();
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: "Failed to update task",
-        description: err.response?.data?.message || "Something went wrong",
+        description: getApiErrorMessage(err),
         variant: "destructive",
       });
     } finally {
@@ -73,7 +76,7 @@ const TaskDetails = ({ task, onTaskUpdate }: TaskDetailsProps) => {
       await API.delete("/tasks/" + task.id);
       toast({ title: "Task deleted" });
       onTaskUpdate?.();
-    } catch (err: any) {
+    } catch {
       toast({ title: "Failed to delete task", variant: "destructive" });
     } finally {
       setLoading(false);

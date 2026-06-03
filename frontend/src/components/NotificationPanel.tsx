@@ -8,6 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import API from "@/api";
+import { Task } from "@/types";
 
 interface Notification {
   id: number;
@@ -26,7 +27,7 @@ const NotificationPanel = () => {
       try {
         const res = await API.get("/tasks");
         const tasks = res.data.data ?? res.data ?? [];
-        const items: Notification[] = tasks.slice(0, 5).map((t: any, i: number) => ({
+        const items: Notification[] = tasks.slice(0, 5).map((t: Task, i: number) => ({
           id: t.id,
           title: i % 2 === 0 ? "Task: " + t.title : "Updated: " + t.title,
           description: (t.assignedToUser?.name || "Someone") + " - " + (t.priority || "Medium") + " priority",
