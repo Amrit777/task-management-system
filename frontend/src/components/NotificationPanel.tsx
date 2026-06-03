@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+﻿import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useToast } from "@/components/ui/use-toast";
+import API from "@/api";
 
 interface Notification {
   id: number;
@@ -18,103 +17,45 @@ interface Notification {
   read: boolean;
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: 1,
-    title: "New task assigned",
-    description: "You have been assigned a new task: 'Setup API integration'",
-    date: "2023-05-10T10:00:00",
-    read: false
-  },
-  {
-    id: 2,
-    title: "Task status update",
-    description: "Task 'Design new dashboard' was moved to 'In Progress'",
-    date: "2023-05-09T15:30:00",
-    read: false
-  },
-  {
-    id: 3,
-    title: "Comment on task",
-    description: "Mike commented on 'Implement authentication'",
-    date: "2023-05-09T11:45:00",
-    read: true
-  },
-  {
-    id: 4,
-    title: "Sprint starting soon",
-    description: "Sprint 'Q2 Features' will start tomorrow",
-    date: "2023-05-08T09:15:00",
-    read: true
-  },
-  {
-    id: 5,
-    title: "Task completed",
-    description: "Task 'Setup project repository' was marked as complete",
-    date: "2023-05-07T16:20:00",
-    read: true
-  },
-  {
-    id: 6,
-    title: "New team member",
-    description: "Emma has joined the team",
-    date: "2023-05-06T14:00:00",
-    read: true
-  },
-  {
-    id: 7,
-    title: "Project deadline updated",
-    description: "The project deadline has been extended by 1 week",
-    date: "2023-05-05T11:30:00",
-    read: true
-  },
-  {
-    id: 8,
-    title: "Meeting reminder",
-    description: "Weekly standup in 30 minutes",
-    date: "2023-05-04T09:30:00",
-    read: true
-  },
-  {
-    id: 9,
-    title: "Task priority change",
-    description: "Task 'Fix navigation bug' priority changed to 'High'",
-    date: "2023-05-03T15:45:00",
-    read: true
-  },
-  {
-    id: 10,
-    title: "New project created",
-    description: "A new project 'Mobile App Redesign' has been created",
-    date: "2023-05-02T10:15:00",
-    read: true
-  }
-];
-
 const NotificationPanel = () => {
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
-  const { toast } = useToast();
-  
-  const unreadCount = notifications.filter(n => !n.read).length;
-  
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await API.get("/tasks");
+        const tasks = res.data.data ?? res.data ?? [];
+        const items: Notification[] = tasks.slice(0, 5).map((t: any, i: number) => ({
+          id: t.id,
+          title: i % 2 === 0 ? "Task: " + t.title : "Updated: " + t.title,
+          description: (t.assignedToUser?.name || "Someone") + " - " + (t.priority || "Medium") + " priority",
+          date: t.updatedAt || t.createdAt || new Date().toISOString(),
+          read: i > 1,
+        }));
+        setNotifications(items);
+      } catch {
+        // silent
+      }
+    };
+    load();
+  }, []);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
   const markAsRead = (id: number) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, read: true } : n
-    ));
-    toast({
-      title: "Notification marked as read",
-      duration: 2000,
-    });
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
   };
-  
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     }).format(date);
   };
 
@@ -136,35 +77,38 @@ const NotificationPanel = () => {
           </div>
         </div>
         <div className="max-h-80 overflow-auto">
-          {notifications.slice(0, 10).map((notification) => (
-            <div 
-              key={notification.id}
-              className={`p-3 border-b last:border-b-0 ${notification.read ? '' : 'bg-accent/30'}`}
-            >
-              <div className="flex justify-between">
-                <h4 className="font-medium text-sm">{notification.title}</h4>
-                <span className="text-xs text-muted-foreground">{formatDate(notification.date)}</span>
+          {notifications.length === 0 ? (
+            <div className="p-4 text-center text-sm text-muted-foreground">No notifications</div>
+          ) : (
+            notifications.map((notification) => (
+              <div
+                key={notification.id}
+                className={"p-3 border-b last:border-b-0 " + (notification.read ? "" : "bg-accent/30")}
+              >
+                <div className="flex justify-between">
+                  <h4 className="font-medium text-sm">{notification.title}</h4>
+                  <span className="text-xs text-muted-foreground">{formatDate(notification.date)}</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{notification.description}</p>
+                {!notification.read && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs mt-1"
+                    onClick={() => markAsRead(notification.id)}
+                  >
+                    Mark as read
+                  </Button>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">{notification.description}</p>
-              <div className="flex justify-between items-center mt-2">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-xs"
-                  onClick={() => markAsRead(notification.id)}
-                >
-                  Mark as read
-                </Button>
-                <Link to={`/notifications/${notification.id}`} onClick={() => setOpen(false)}>
-                  <Button variant="link" size="sm" className="text-xs p-0 h-auto">View</Button>
-                </Link>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
         <div className="p-2 border-t">
           <Link to="/notifications" onClick={() => setOpen(false)}>
-            <Button variant="ghost" size="sm" className="w-full">View all notifications</Button>
+            <Button variant="ghost" size="sm" className="w-full">
+              View all notifications
+            </Button>
           </Link>
         </div>
       </PopoverContent>

@@ -1,6 +1,7 @@
-import { useState } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
@@ -10,107 +11,72 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { ListTodo, Plus } from "lucide-react";
+import { ListTodo, Plus, Loader2 } from "lucide-react";
 import TaskForm from "@/components/TaskForm";
 import TaskDetails from "@/components/TaskDetails";
-
-interface Task {
-  id: number;
-  title: string;
-  description?: string;
-  priority: string;
-  status: string;
-  assignee: string;
-  project?: string;
-  type: string;
-  epic?: string;
-}
-
-const mockBacklogTasks: Task[] = [
-  { id: 101, title: "Implement user authentication", priority: "High", status: "To Do", assignee: "Mike", project: "Dashboard Redesign", type: "Feature" },
-  { id: 102, title: "Design user profile page", priority: "Medium", status: "To Do", assignee: "Sarah", project: "Dashboard Redesign", type: "Design" },
-  { id: 103, title: "Implement API endpoints", priority: "High", status: "To Do", assignee: "John", project: "Mobile App", type: "Feature" },
-  { id: 104, title: "Add notification system", priority: "Low", status: "To Do", assignee: "Emma", project: "Marketing Website", type: "Feature" },
-  { id: 105, title: "Fix navigation bug on mobile", priority: "Medium", status: "To Do", assignee: "Mike", project: "Mobile App", type: "Bug" },
-];
+import API from "@/api";
+import { Task, displayStatus } from "@/types";
 
 export default function Backlog() {
-  const [backlogTasks, setBacklogTasks] = useState<Task[]>(mockBacklogTasks);
-  const [filteredTasks, setFilteredTasks] = useState<Task[]>(mockBacklogTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState({
-    priority: "all",
-    assignee: "all",
-    type: "all",
-    project: "all",
-  });
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
 
-  const priorities = Array.from(new Set(backlogTasks.map(t => t.priority)));
-  const assignees = Array.from(new Set(backlogTasks.map(t => t.assignee)));
-  const types = Array.from(new Set(backlogTasks.map(t => t.type)));
-  const projects = Array.from(new Set(backlogTasks.filter(t => t.project).map(t => t.project!)));
-
-  const applyFilters = (
-    tasks: Task[],
-    search = searchTerm,
-    currentF = filters
-  ) => {
-    let result = tasks;
-
-    if (search) {
-      result = result.filter(t =>
-        t.title.toLowerCase().includes(search.toLowerCase()) ||
-        t.description?.toLowerCase().includes(search.toLowerCase())
-      );
+  const fetchTasks = async () => {
+    try {
+      const res = await API.get("/tasks");
+      setTasks(res.data.data ?? res.data);
+    } catch (err) {
+      console.error("Failed to fetch tasks:", err);
+    } finally {
+      setLoading(false);
     }
-
-    if (currentF.priority !== "all") {
-      result = result.filter(t => t.priority === currentF.priority);
-    }
-    if (currentF.assignee !== "all") {
-      result = result.filter(t => t.assignee === currentF.assignee);
-    }
-    if (currentF.type !== "all") {
-      result = result.filter(t => t.type === currentF.type);
-    }
-    if (currentF.project !== "all") {
-      result = result.filter(t => t.project === currentF.project);
-    }
-
-    setFilteredTasks(result);
   };
 
-  const changeFilter = (key: keyof typeof filters, value: string) => {
-    const next = { ...filters, [key]: value };
-    setFilters(next);
-    applyFilters(backlogTasks, searchTerm, next);
-  };
+  useEffect(() => {
+    fetchTasks();
+  }, []);
 
-  const handleSearch = (term: string) => {
-    setSearchTerm(term);
-    applyFilters(backlogTasks, term, filters);
-  };
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      if (searchTerm) {
+        const q = searchTerm.toLowerCase();
+        if (
+          !task.title.toLowerCase().includes(q) &&
+          !(task.description || "").toLowerCase().includes(q)
+        )
+          return false;
+      }
+      if (priorityFilter !== "all" && task.priority !== priorityFilter)
+        return false;
+      if (statusFilter !== "all" && task.status !== statusFilter) return false;
+      return true;
+    });
+  }, [tasks, searchTerm, priorityFilter, statusFilter]);
 
-  const handleCreateTask = (data: Partial<Task>) => {
-    const newTask: Task = {
-      id: Math.max(...backlogTasks.map(t => t.id)) + 1,
-      status: "To Do",
-      priority: data.priority || "Medium",
-      type: data.type || "Feature",
-      assignee: data.assignee || "Unassigned",
-      title: data.title!,
-      project: data.project,
-      description: data.description,
-      epic: data.epic,
-    };
-    const updated = [...backlogTasks, newTask];
-    setBacklogTasks(updated);
-    applyFilters(updated, searchTerm, filters);
+  const handleTaskCreated = () => {
     setIsNewTaskOpen(false);
+    fetchTasks();
   };
+
+  const handleTaskUpdated = () => {
+    setIsDetailsOpen(false);
+    setSelectedTask(null);
+    fetchTasks();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -118,9 +84,7 @@ export default function Backlog() {
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-2">
           <h1 className="text-2xl font-bold">Backlog</h1>
-          <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-md text-sm">
-            {filteredTasks.length} items
-          </span>
+          <Badge variant="secondary">{filteredTasks.length} items</Badge>
         </div>
         <Button onClick={() => setIsNewTaskOpen(true)}>
           <Plus className="mr-2 h-4 w-4" /> Add Task
@@ -133,72 +97,47 @@ export default function Backlog() {
           <CardTitle className="text-md">Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Input
               placeholder="Search tasks..."
               value={searchTerm}
-              onChange={e => handleSearch(e.target.value)}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
 
-            <Select
-              value={filters.priority}
-              onValueChange={v => changeFilter("priority", v)}
-            >
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Priorities</SelectItem>
-                {priorities.map(p => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
-                ))}
+                <SelectItem value="High">High</SelectItem>
+                <SelectItem value="Medium">Medium</SelectItem>
+                <SelectItem value="Low">Low</SelectItem>
               </SelectContent>
             </Select>
 
-            <Select
-              value={filters.assignee}
-              onValueChange={v => changeFilter("assignee", v)}
-            >
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
-                <SelectValue placeholder="Assignee" />
+                <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Assignees</SelectItem>
-                {assignees.map(a => (
-                  <SelectItem key={a} value={a}>{a}</SelectItem>
-                ))}
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="todo">To Do</SelectItem>
+                <SelectItem value="in-progress">In Progress</SelectItem>
+                <SelectItem value="completed">Done</SelectItem>
               </SelectContent>
             </Select>
 
-            <Select
-              value={filters.type}
-              onValueChange={v => changeFilter("type", v)}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSearchTerm("");
+                setPriorityFilter("all");
+                setStatusFilter("all");
+              }}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {types.map(t => (
-                  <SelectItem key={t} value={t}>{t}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={filters.project}
-              onValueChange={v => changeFilter("project", v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Project" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Projects</SelectItem>
-                {projects.map(p => (
-                  <SelectItem key={p} value={p}>{p}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              Clear Filters
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -206,34 +145,40 @@ export default function Backlog() {
       {/* Task List */}
       <div className="space-y-2">
         {filteredTasks.length > 0 ? (
-          filteredTasks.map(task => (
+          filteredTasks.map((task) => (
             <Card
               key={task.id}
               className="hover:bg-accent/30 cursor-pointer"
-              onClick={() => { setSelectedTask(task); setIsDetailsOpen(true); }}
+              onClick={() => {
+                setSelectedTask(task);
+                setIsDetailsOpen(true);
+              }}
             >
               <CardContent className="p-4 flex justify-between items-center">
                 <div className="flex items-start space-x-3">
-                  <ListTodo className="h-5 w-5 text-muted-foreground" />
+                  <ListTodo className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
                     <h3 className="font-medium">{task.title}</h3>
                     <div className="flex items-center text-xs text-muted-foreground mt-1 space-x-2">
-                      <span>{task.project || 'No project'}</span>
-                      <span>•</span>
-                      <span>{task.type}</span>
-                      <span>•</span>
-                      <span>Assigned to {task.assignee}</span>
+                      <span>{task.assignedToUser?.name || "Unassigned"}</span>
+                      <span>~</span>
+                      <Badge variant="outline" className="text-xs">
+                        {displayStatus(task.status)}
+                      </Badge>
                     </div>
                   </div>
                 </div>
-                <span className={`
-                  px-2 py-0.5 rounded-full text-xs
-                  ${task.priority === 'High' ? 'bg-red-100 text-red-800' : ''}
-                  ${task.priority === 'Medium' ? 'bg-yellow-100 text-yellow-800' : ''}
-                  ${task.priority === 'Low' ? 'bg-green-100 text-green-800' : ''}
-                `}>
+                <Badge
+                  variant={
+                    task.priority === "High"
+                      ? "destructive"
+                      : task.priority === "Medium"
+                      ? "secondary"
+                      : "outline"
+                  }
+                >
                   {task.priority}
-                </span>
+                </Badge>
               </CardContent>
             </Card>
           ))
@@ -244,10 +189,9 @@ export default function Backlog() {
               variant="outline"
               className="mt-2"
               onClick={() => {
-                const reset = { priority: "all", assignee: "all", type: "all", project: "all" };
-                setFilters(reset);
                 setSearchTerm("");
-                applyFilters(backlogTasks, "", reset);
+                setPriorityFilter("all");
+                setStatusFilter("all");
               }}
             >
               Clear filters
@@ -262,7 +206,9 @@ export default function Backlog() {
           <DialogHeader>
             <DialogTitle>Task Details</DialogTitle>
           </DialogHeader>
-          {selectedTask && <TaskDetails task={selectedTask} />}
+          {selectedTask && (
+            <TaskDetails task={selectedTask} onTaskUpdate={handleTaskUpdated} />
+          )}
         </DialogContent>
       </Dialog>
 
@@ -272,7 +218,7 @@ export default function Backlog() {
           <DialogHeader>
             <DialogTitle>Create New Task</DialogTitle>
           </DialogHeader>
-          <TaskForm onSubmit={handleCreateTask} />
+          <TaskForm onSubmit={handleTaskCreated} />
         </DialogContent>
       </Dialog>
     </div>

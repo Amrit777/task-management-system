@@ -16,6 +16,14 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: "Medium",
     },
     dueDate: { type: DataTypes.DATE },
+  }, {
+    indexes: [
+      { fields: ["projectId"] },
+      { fields: ["assignedTo"] },
+      { fields: ["createdBy"] },
+      { fields: ["status"] },
+      { fields: ["dueDate"] },
+    ],
   });
 
   Task.associate = (models) => {

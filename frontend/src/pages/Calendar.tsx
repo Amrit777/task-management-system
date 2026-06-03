@@ -1,8 +1,9 @@
-import { useState } from "react";
+﻿import { useState, useEffect } from "react";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import TaskForm from "@/components/TaskForm";
 import TaskDetails from "@/components/TaskDetails";
 import {
@@ -12,53 +13,47 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { format } from "date-fns";
-
-interface Task {
-  id: number;
-  title: string;
-  description?: string;
-  priority: string;
-  status: string;
-  assignee: string;
-  dueDate: string;
-}
-
-const mockTasks: Task[] = [
-  { id: 1, title: "Design new dashboard", priority: "High", status: "To Do", assignee: "Sarah", description: "Create wireframes for the new dashboard layout", dueDate: "2025-04-28" },
-  { id: 2, title: "Update documentation", priority: "Medium", status: "To Do", assignee: "John", description: "Update the API documentation for the new endpoints", dueDate: "2025-04-27" },
-  { id: 3, title: "Implement authentication", priority: "High", status: "In Progress", assignee: "Mike", description: "Add OAuth support and email verification", dueDate: "2025-04-25" },
-  { id: 4, title: "Setup project repository", priority: "Low", status: "Done", assignee: "Sarah", description: "Initialize git repository and setup CI/CD", dueDate: "2025-04-24" },
-  { id: 5, title: "Fix responsive layout", priority: "Medium", status: "To Do", assignee: "Emma", description: "Fix layout issues on mobile devices", dueDate: "2025-04-26" },
-];
+import API from "@/api";
+import { Task, displayStatus } from "@/types";
 
 const Calendar = () => {
   const [date, setDate] = useState<Date>(new Date());
   const [view, setView] = useState<"month" | "day">("month");
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
-
-  // sentinel "all" means no filter
-  const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all"); // kept for future use
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
 
-  const assignees = Array.from(new Set(tasks.map(t => t.assignee)));
-  const statuses = ["To Do", "In Progress", "Done"];
-  const types = ["Task", "Bug"];
+  const fetchTasks = async () => {
+    try {
+      const res = await API.get("/tasks");
+      setTasks(res.data.data ?? res.data);
+    } catch (err) {
+      console.error("Failed to fetch tasks:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // filter out by sentinel "all"
-  const filteredTasks = tasks.filter(task =>
-    (assigneeFilter === "all" || task.assignee === assigneeFilter) &&
-    (statusFilter === "all" || task.status === statusFilter)
-    // typeFilter is unused for now
-  );
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const filteredTasks = tasks.filter((task) => {
+    if (statusFilter !== "all" && task.status !== statusFilter) return false;
+    if (priorityFilter !== "all" && task.priority !== priorityFilter) return false;
+    return true;
+  });
 
   const tasksForDate = (dateStr: string) =>
-    filteredTasks.filter(task => task.dueDate === dateStr);
+    filteredTasks.filter(
+      (task) => task.dueDate && task.dueDate.split("T")[0] === dateStr
+    );
 
   const dateHasTasks = (d: Date) => {
     const ds = format(d, "yyyy-MM-dd");
@@ -71,14 +66,15 @@ const Calendar = () => {
     setView("day");
   };
 
-  const handleCreateTask = (data: any) => {
-    const newTask: Task = {
-      id: Math.max(...tasks.map(t => t.id)) + 1,
-      ...data,
-      dueDate: date ? format(date, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
-    };
-    setTasks(prev => [...prev, newTask]);
+  const handleTaskCreated = () => {
     setIsNewTaskOpen(false);
+    fetchTasks();
+  };
+
+  const handleTaskUpdated = () => {
+    setIsDetailsOpen(false);
+    setSelectedTask(null);
+    fetchTasks();
   };
 
   const handleTaskClick = (task: Task) => {
@@ -86,23 +82,29 @@ const Calendar = () => {
     setIsDetailsOpen(true);
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   const renderTaskForDay = (task: Task) => (
     <div
       key={task.id}
-      className={`p-2 rounded-md mb-2 cursor-pointer ${task.priority === "High" ? "bg-red-100 border-l-4 border-red-500" :
-        task.priority === "Medium" ? "bg-yellow-100 border-l-4 border-yellow-500" :
-          "bg-green-100 border-l-4 border-green-500"
-        }`}
+      className={"p-3 rounded-md mb-2 cursor-pointer border-l-4 bg-card hover:bg-accent/50 " +
+        (task.priority === "High" ? "border-red-500" :
+         task.priority === "Medium" ? "border-yellow-500" : "border-green-500")}
       onClick={() => handleTaskClick(task)}
     >
       <div className="flex justify-between items-center">
         <h4 className="font-semibold text-sm truncate">{task.title}</h4>
-        <span className="text-xs bg-white/50 rounded-full px-2 py-0.5">
-          {task.status}
-        </span>
+        <Badge variant="outline">{displayStatus(task.status)}</Badge>
       </div>
-      <div className="flex justify-between mt-1">
-        <span className="text-xs">{task.assignee}</span>
+      <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+        <span>{task.assignedToUser?.name || "Unassigned"}</span>
+        <span>{task.priority}</span>
       </div>
     </div>
   );
@@ -116,10 +118,10 @@ const Calendar = () => {
           <p className="text-muted-foreground">
             {view === "month"
               ? "Monthly Overview"
-              : `Tasks for ${format(date, "MMMM d, yyyy")}`}
+              : "Tasks for " + format(date, "MMMM d, yyyy")}
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex gap-2">
           <Button
             variant={view === "month" ? "default" : "outline"}
             onClick={() => setView("month")}
@@ -144,55 +146,27 @@ const Calendar = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-1 block">Assignee</label>
-                <Select
-                  value={assigneeFilter}
-                  onValueChange={setAssigneeFilter}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All assignees" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All assignees</SelectItem>
-                    {assignees.map(a => (
-                      <SelectItem key={a} value={a}>{a}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
                 <label className="text-sm font-medium mb-1 block">Status</label>
-                <Select
-                  value={statusFilter}
-                  onValueChange={setStatusFilter}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All statuses" />
-                  </SelectTrigger>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger><SelectValue placeholder="All statuses" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All statuses</SelectItem>
-                    {statuses.map(s => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
+                    <SelectItem value="todo">To Do</SelectItem>
+                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Done</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-1 block">Type</label>
-                <Select
-                  value={typeFilter}
-                  onValueChange={setTypeFilter}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All types" />
-                  </SelectTrigger>
+                <label className="text-sm font-medium mb-1 block">Priority</label>
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                  <SelectTrigger><SelectValue placeholder="All priorities" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All types</SelectItem>
-                    {types.map(t => (
-                      <SelectItem key={t} value={t}>{t}</SelectItem>
-                    ))}
+                    <SelectItem value="all">All priorities</SelectItem>
+                    <SelectItem value="High">High</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="Low">Low</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -200,11 +174,7 @@ const Calendar = () => {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => {
-                  setAssigneeFilter("all");
-                  setStatusFilter("all");
-                  setTypeFilter("all");
-                }}
+                onClick={() => { setStatusFilter("all"); setPriorityFilter("all"); }}
               >
                 Clear Filters
               </Button>
@@ -230,12 +200,12 @@ const Calendar = () => {
                     },
                   }}
                   components={{
-                    DayContent: ({ date, ...props }) => (
+                    DayContent: ({ date: d, ...props }) => (
                       <div className="relative">
-                        <div {...props}>{date.getDate()}</div>
-                        {tasksForDate(format(date, "yyyy-MM-dd")).length > 0 && (
+                        <div {...props}>{d.getDate()}</div>
+                        {tasksForDate(format(d, "yyyy-MM-dd")).length > 0 && (
                           <div className="absolute top-0 right-0 w-4 h-4 bg-primary/80 text-white rounded-full flex items-center justify-center text-[8px]">
-                            {tasksForDate(format(date, "yyyy-MM-dd")).length}
+                            {tasksForDate(format(d, "yyyy-MM-dd")).length}
                           </div>
                         )}
                       </div>
@@ -247,7 +217,7 @@ const Calendar = () => {
           ) : (
             <div className="space-y-4">
               <Card>
-                <CardHeader className="flex justify-between pb-2">
+                <CardHeader className="flex flex-row justify-between pb-2">
                   <CardTitle>{format(date, "EEEE, MMMM d, yyyy")}</CardTitle>
                   <Button variant="ghost" onClick={() => setView("month")}>
                     Back to Month
@@ -259,13 +229,8 @@ const Calendar = () => {
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-muted-foreground">No tasks for this day</p>
-                      <Button
-                        variant="outline"
-                        className="mt-4"
-                        onClick={() => setIsNewTaskOpen(true)}
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Task
+                      <Button variant="outline" className="mt-4" onClick={() => setIsNewTaskOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" /> Add Task
                       </Button>
                     </div>
                   )}
@@ -282,7 +247,7 @@ const Calendar = () => {
           <DialogHeader>
             <DialogTitle>Task Details</DialogTitle>
           </DialogHeader>
-          {selectedTask && <TaskDetails task={selectedTask} />}
+          {selectedTask && <TaskDetails task={selectedTask} onTaskUpdate={handleTaskUpdated} />}
         </DialogContent>
       </Dialog>
 
@@ -292,7 +257,7 @@ const Calendar = () => {
           <DialogHeader>
             <DialogTitle>Create New Task</DialogTitle>
           </DialogHeader>
-          <TaskForm onSubmit={handleCreateTask} />
+          <TaskForm onSubmit={handleTaskCreated} />
         </DialogContent>
       </Dialog>
     </div>

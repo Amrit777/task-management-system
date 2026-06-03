@@ -1,21 +1,32 @@
 // backend/routes/projects.js
 const express = require("express");
 const router = express.Router();
-const { protect, authorize } = require("../middleware/authMiddleware");
+const { protect } = require("../middleware/authMiddleware");
+const {
+  handleValidation,
+  createProjectRules,
+  idParamRule,
+} = require("../middleware/validators");
 const {
   createProject,
   getProjects,
+  getProjectById,
+  updateProject,
+  deleteProject,
 } = require("../controllers/projectController");
 const { checkTitle } = require("../controllers/taskController");
 
-// Create a project (admins & PMs) / List projects (any authenticated user)
 router
   .route("/")
-  .post(protect, authorize("admin", "project_manager"), createProject)
+  .post(protect, createProjectRules, handleValidation, createProject)
   .get(protect, getProjects);
 
-// Title‑check for tasks in a project
-// GET /api/projects/:projectId/tasks/title-check?title=...
+router
+  .route("/:id")
+  .get(protect, idParamRule, handleValidation, getProjectById)
+  .put(protect, idParamRule, handleValidation, updateProject)
+  .delete(protect, idParamRule, handleValidation, deleteProject);
+
 router.get("/:projectId/tasks/title-check", protect, checkTitle);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 // backend/controllers/notificationController.js
-// Simple controller to send notifications via Socket.io
-exports.sendNotification = (io, data) => {
-    io.emit('notification', data);
-  };
-  
+// Thin wrapper kept for backwards compatibility. Prefer utils/notify.js
+// (notifyUser) for targeted notifications.
+const { notifyUser } = require("../utils/notify");
+
+exports.notifyUser = notifyUser;

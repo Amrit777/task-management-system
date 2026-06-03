@@ -1,10 +1,12 @@
 // backend/routes/comments.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
-const { addComment, getComments } = require('../controllers/commentController');
+const { protect } = require("../middleware/authMiddleware");
+const { handleValidation, addCommentRules, idParamRule } = require("../middleware/validators");
+const { addComment, getComments, deleteComment } = require("../controllers/commentController");
 
-router.post('/', protect, addComment);
-router.get('/:taskId', protect, getComments);
+router.post("/", protect, addCommentRules, handleValidation, addComment);
+router.get("/:taskId", protect, getComments);
+router.delete("/:id", protect, idParamRule, handleValidation, deleteComment);
 
 module.exports = router;

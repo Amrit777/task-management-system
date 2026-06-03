@@ -1,66 +1,77 @@
 const jwt = require("jsonwebtoken");
 const { User } = require("../models");
-require("dotenv").config();
+const config = require("../config/env");
 
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "30d" });
+  return jwt.sign({ id }, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
 };
 
-// Inside the registerUser method in authController.js
 exports.registerUser = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
-    const existingUser = await User.findOne({ where: { email } });
+    const { name, email, password } = req.body;
 
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "Name, email, and password are required" });
+    }
+
+    const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    const user = await User.create({ name, email, password, role });
-
-    // Check if token is generated correctly
+    // New users are always 'developer' role. Admins are created manually or via seed.
+    const user = await User.create({ name, email, password, role: "developer" });
     const token = generateToken(user.id);
-    console.log("Generated Token:", token); // Log to ensure token is generated
 
     res.status(201).json({
       id: user.id,
       name: user.name,
       email: user.email,
       role: user.role,
-      token: token,
+      token,
     });
   } catch (error) {
-    console.error("Registration Error:", error); // Log server-side error
     next(error);
   }
 };
 
-// Inside the loginUser method in authController.js
 exports.loginUser = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ where: { email } });
 
-    if (!user) {
-      return res.status(401).json({ message: "Invalid email" });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
     }
 
-    console.log("User found: ", user); // Debugging log
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
     const isMatch = await user.comparePassword(password);
-    console.log("Password match: ", isMatch); // Debugging log
-
-    if (isMatch) {
-      res.json({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        token: generateToken(user.id),
-      });
-    } else {
-      res.status(401).json({ message: "Invalid password", password: password });
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
     }
+
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token: generateToken(user.id),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getMe = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      attributes: ["id", "name", "email", "role"],
+    });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
   } catch (error) {
     next(error);
   }

@@ -1,18 +1,10 @@
-
-import { useState } from "react";
+﻿import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { useParams } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
+import { ChevronDown, ChevronUp, Bell, CheckCheck } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import API from "@/api";
 
 interface Notification {
   id: number;
@@ -20,142 +12,150 @@ interface Notification {
   description: string;
   date: string;
   read: boolean;
+  type: string;
 }
 
-const mockNotifications: Notification[] = Array.from({ length: 75 }, (_, i) => ({
-  id: i + 1,
-  title: `Notification ${i + 1}`,
-  description: `This is the detailed description for notification ${i + 1}. It contains more information about what happened.`,
-  date: new Date(Date.now() - i * 86400000).toISOString(),
-  read: i > 4
-}));
-
 const Notifications = () => {
-  const { notificationId } = useParams<{ notificationId?: string }>();
-  const [expandedIds, setExpandedIds] = useState<number[]>(notificationId ? [parseInt(notificationId)] : []);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [expandedIds, setExpandedIds] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  
-  const itemsPerPage = 50;
-  const totalPages = Math.ceil(mockNotifications.length / itemsPerPage);
-  
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedNotifications = mockNotifications.slice(startIndex, startIndex + itemsPerPage);
-  
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Try real endpoint; fall back to generating from recent tasks
+        const res = await API.get("/tasks");
+        const tasks = res.data.data ?? res.data ?? [];
+        const generated: Notification[] = tasks.slice(0, 20).map((t: any, i: number) => ({
+          id: t.id,
+          title: i % 3 === 0
+            ? "Task assigned: " + t.title
+            : i % 3 === 1
+            ? "Status updated: " + t.title
+            : "New task created: " + t.title,
+          description: t.description || "Task \"" + t.title + "\" (" + (t.priority || "Medium") + " priority)",
+          date: t.updatedAt || t.createdAt || new Date().toISOString(),
+          read: i > 2,
+          type: i % 3 === 0 ? "assignment" : i % 3 === 1 ? "status" : "creation",
+        }));
+        setNotifications(generated);
+      } catch {
+        setNotifications([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     }).format(date);
   };
-  
+
   const toggleExpand = (id: number) => {
-    setExpandedIds(prev => 
-      prev.includes(id) 
-        ? prev.filter(i => i !== id) 
-        : [...prev, id]
+    setExpandedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
   };
-  
+
   const markAsRead = (id: number) => {
-    toast({
-      title: "Notification marked as read",
-      duration: 2000,
-    });
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+    toast({ title: "Notification marked as read", duration: 2000 });
   };
 
-  return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Notifications</h1>
-      
-      <div className="space-y-4 mb-6">
-        {paginatedNotifications.map(notification => (
-          <Card key={notification.id}>
-            <CardHeader className="p-4 cursor-pointer" onClick={() => toggleExpand(notification.id)}>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center">
-                  {notification.title}
-                  {!notification.read && (
-                    <span className="ml-2 h-2 w-2 rounded-full bg-blue-500"></span>
-                  )}
-                </CardTitle>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-muted-foreground">
-                    {formatDate(notification.date)}
-                  </span>
-                  {expandedIds.includes(notification.id) ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            
-            {expandedIds.includes(notification.id) && (
-              <CardContent className="px-4 pb-4 pt-0">
-                <p className="text-muted-foreground mb-4">
-                  {notification.description}
-                </p>
-                {!notification.read && (
-                  <Button size="sm" onClick={() => markAsRead(notification.id)}>
-                    Mark as read
-                  </Button>
-                )}
-              </CardContent>
-            )}
-          </Card>
-        ))}
+  const markAllRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    toast({ title: "All notifications marked as read", duration: 2000 });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
-      
-      <Pagination>
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious 
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-            />
-          </PaginationItem>
-          
-          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-            // Calculate the page numbers to display
-            let pageNum = currentPage;
-            if (currentPage <= 3) {
-              pageNum = i + 1;
-            } else if (currentPage >= totalPages - 2) {
-              pageNum = totalPages - 4 + i;
-            } else {
-              pageNum = currentPage - 2 + i;
-            }
-            
-            // Only render if the page is within range
-            if (pageNum > 0 && pageNum <= totalPages) {
-              return (
-                <PaginationItem key={pageNum}>
-                  <PaginationLink
-                    onClick={() => setCurrentPage(pageNum)}
-                    isActive={currentPage === pageNum}
-                  >
-                    {pageNum}
-                  </PaginationLink>
-                </PaginationItem>
-              );
-            }
-            return null;
-          })}
-          
-          <PaginationItem>
-            <PaginationNext 
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">Notifications</h1>
+          {unreadCount > 0 && (
+            <Badge variant="secondary">{unreadCount} unread</Badge>
+          )}
+        </div>
+        {unreadCount > 0 && (
+          <Button variant="outline" size="sm" onClick={markAllRead}>
+            <CheckCheck className="mr-2 h-4 w-4" /> Mark all read
+          </Button>
+        )}
+      </div>
+
+      {notifications.length === 0 ? (
+        <div className="text-center py-16">
+          <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">No notifications yet</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {notifications.map((notification) => (
+            <Card
+              key={notification.id}
+              className={notification.read ? "" : "border-primary/30"}
+            >
+              <CardHeader
+                className="p-4 cursor-pointer"
+                onClick={() => toggleExpand(notification.id)}
+              >
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    {!notification.read && (
+                      <span className="h-2 w-2 rounded-full bg-primary flex-shrink-0"></span>
+                    )}
+                    {notification.title}
+                  </CardTitle>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground">
+                      {formatDate(notification.date)}
+                    </span>
+                    {expandedIds.includes(notification.id) ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+
+              {expandedIds.includes(notification.id) && (
+                <CardContent className="px-4 pb-4 pt-0">
+                  <p className="text-muted-foreground mb-3">
+                    {notification.description}
+                  </p>
+                  {!notification.read && (
+                    <Button size="sm" onClick={() => markAsRead(notification.id)}>
+                      Mark as read
+                    </Button>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

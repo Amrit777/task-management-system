@@ -8,6 +8,8 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+  }, {
+    indexes: [{ fields: ["taskId"] }],
   });
 
   Attachment.associate = (models) => {

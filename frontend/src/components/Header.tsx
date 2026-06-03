@@ -1,12 +1,10 @@
-
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  ListTodo, 
-  Inbox, 
-  User, 
-  Settings, 
+﻿import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  LayoutDashboard,
+  ListTodo,
+  Inbox,
+  User,
   LogOut,
   Menu,
   Calendar,
@@ -27,10 +25,18 @@ import {
 } from "@/components/ui/sheet";
 import ThemeToggle from "./ThemeToggle";
 import NotificationPanel from "./NotificationPanel";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   const navItems = [
     { name: "Dashboard", icon: LayoutDashboard, path: "/" },
     { name: "Board", icon: ListTodo, path: "/board" },
@@ -80,14 +86,14 @@ const Header = () => {
               <SidebarNavigation />
             </SheetContent>
           </Sheet>
-          
+
           <div className="font-semibold text-xl hidden md:block">Task Manager</div>
-          
+
           <nav className="hidden md:block">
             <NavigationLinks />
           </nav>
         </div>
-        
+
         <div className="flex items-center space-x-2">
           <ThemeToggle />
           <NotificationPanel />
@@ -98,16 +104,12 @@ const Header = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>
+              <DropdownMenuItem disabled>
                 <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
+                <span>{user?.name || "User"}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>
