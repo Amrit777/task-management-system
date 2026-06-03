@@ -1,14 +1,14 @@
 // client/src/components/auth/Register.js
-import React, { useState } from 'react';
-import API from '../../api';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import API from "../../api";
+import { useNavigate } from "react-router-dom";
 
 const Register = () => {
   const [form, setForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    role: 'client', // default role; adjust as needed
+    name: "",
+    email: "",
+    password: "",
+    role: "client", // default role; adjust as needed
   });
   const history = useNavigate();
 
@@ -19,12 +19,19 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const { data } = await API.post('/auth/register', form);
-      localStorage.setItem('token', data.token);
-      history.push('/dashboard');
+      const { data } = await API.post("/auth/register", form);
+      console.log("Register Response:", data); // Log the response
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        history.push("/dashboard");
+      } else {
+        // If no token is returned, log a warning and show alert
+        console.warn("Token missing in response");
+        alert("Registration failed, please try again.");
+      }
     } catch (error) {
-      console.error(error);
-      alert('Registration failed, please try again.');
+      console.error("Registration Error:", error.response || error); // Log the error response
+      alert("Registration failed, please try again.");
     }
   };
 
@@ -39,7 +46,8 @@ const Register = () => {
           value={form.name}
           onChange={handleChange}
           required
-        /><br/>
+        />
+        <br />
         <input
           name="email"
           type="email"
@@ -47,7 +55,8 @@ const Register = () => {
           value={form.email}
           onChange={handleChange}
           required
-        /><br/>
+        />
+        <br />
         <input
           name="password"
           type="password"
@@ -55,13 +64,15 @@ const Register = () => {
           value={form.password}
           onChange={handleChange}
           required
-        /><br/>
+        />
+        <br />
         <select name="role" value={form.role} onChange={handleChange}>
           <option value="client">Client</option>
           <option value="developer">Developer</option>
           <option value="project_manager">Project Manager</option>
           <option value="admin">Admin</option>
-        </select><br/>
+        </select>
+        <br />
         <button type="submit">Register</button>
       </form>
     </div>

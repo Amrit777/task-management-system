@@ -1,26 +1,63 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Login from './components/auth/Login';
-import Dashboard from './components/dashboard/Dashboard';
-import TaskBoard from './components/tasks/TaskBoard';
-import Register from './components/auth/Register';
+import React from "react";
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import Login from "./components/auth/Login";
+import Register from "./components/auth/Register";
+import Dashboard from "./components/dashboard/Dashboard";
+import TaskBoard from "./components/tasks/TaskBoard";
+import TaskForm from "./components/tasks/TaskForm";
+import Layout from "./components/layout/Layout";
 
-function App() {
+const App = () => {
   return (
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
-        {/* Protect these routes later with PrivateRoute or auth logic */}
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/tasks" element={<TaskBoard />} />
         <Route path="/register" element={<Register />} />
+
+        {/* Protected routes inside layout */}
         <Route
           path="/"
-          element={<div>Welcome to Task Manager! Please Login.</div>}
+          element={
+            <Layout>
+              <Dashboard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <Layout>
+              <Dashboard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/tasks"
+          element={
+            <Layout>
+              <TaskBoard />
+            </Layout>
+          }
+        />
+        <Route
+          path="/tasks/create"
+          element={
+            <Layout>
+              <TaskForm />
+            </Layout>
+          }
+        />
+        <Route
+          path="/tasks/edit/:id"
+          element={
+            <Layout>
+              <TaskForm isEditing={true} />
+            </Layout>
+          }
         />
       </Routes>
     </Router>
   );
-}
+};
 
 export default App;

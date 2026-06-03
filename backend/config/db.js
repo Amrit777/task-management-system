@@ -1,24 +1,19 @@
 // backend/config/db.js
+const { Sequelize } = require("sequelize");
+const config = require("./env");
 
-const { Sequelize } = require('sequelize');
+const sequelize = new Sequelize(config.db.name, config.db.user, config.db.password, {
+  host: config.db.host,
+  port: config.db.port,
+  dialect: config.db.dialect,
+  logging: config.isProd || config.isTest ? false : (msg) => console.debug(msg),
+  pool: { max: 10, min: 0, acquire: 30000, idle: 10000 },
+});
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST,
-    dialect: 'mysql', // or 'postgres' if you're using Postgres
-  }
-);
-
+// Throws on failure so callers can decide to abort startup (fail fast).
 const connectDB = async () => {
-  try {
-    await sequelize.authenticate();
-    console.log('MySQL connected...');
-  } catch (error) {
-    console.error('Unable to connect to the database:', error);
-  }
+  await sequelize.authenticate();
+  console.log("Database connected");
 };
 
 module.exports = { sequelize, connectDB };

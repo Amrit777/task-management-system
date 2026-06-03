@@ -1,10 +1,23 @@
-// backend/models/attachment.js
-const { DataTypes } = require('sequelize');
-const { sequelize } = require('../config/db');
+module.exports = (sequelize, DataTypes) => {
+  const Attachment = sequelize.define("Attachment", {
+    filePath: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    fileName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  }, {
+    indexes: [{ fields: ["taskId"] }],
+  });
 
-const Attachment = sequelize.define('Attachment', {
-  filename: { type: DataTypes.STRING, allowNull: false },
-  fileUrl: { type: DataTypes.STRING, allowNull: false },
-});
+  Attachment.associate = (models) => {
+    Attachment.belongsTo(models.Task, {
+      foreignKey: "taskId",
+      onDelete: "CASCADE",
+    });
+  };
 
-module.exports = Attachment;
+  return Attachment;
+};

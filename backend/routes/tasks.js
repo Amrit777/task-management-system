@@ -1,17 +1,28 @@
 // backend/routes/tasks.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const { protect, authorize } = require('../middleware/authMiddleware');
-const { createTask, getTasks, updateTask, deleteTask } = require('../controllers/taskController');
+const upload = require("../utils/fileUpload");
+const { protect } = require("../middleware/authMiddleware");
+const {
+  handleValidation,
+  createTaskRules,
+  updateTaskRules,
+  idParamRule,
+} = require("../middleware/validators");
+const {
+  createTask,
+  getTasks,
+  getTaskById,
+  updateTask,
+  deleteTask,
+  getStats,
+} = require("../controllers/taskController");
 
-router
-  .route('/')
-  .post(protect, authorize('admin', 'project_manager', 'developer'), createTask)
-  .get(protect, getTasks);
-
-router
-  .route('/:id')
-  .put(protect, authorize('admin', 'project_manager', 'developer'), updateTask)
-  .delete(protect, authorize('admin', 'project_manager'), deleteTask);
+router.get("/stats", protect, getStats);
+router.post("/", protect, upload.array("attachments"), createTaskRules, handleValidation, createTask);
+router.get("/", protect, getTasks);
+router.get("/:id", protect, idParamRule, handleValidation, getTaskById);
+router.put("/:id", protect, updateTaskRules, handleValidation, updateTask);
+router.delete("/:id", protect, idParamRule, handleValidation, deleteTask);
 
 module.exports = router;

@@ -1,0 +1,65 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: tms-db
+    environment:
+      POSTGRES_USER: tms_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-tms_password}
+      POSTGRES_DB: taskmanager
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tms_user -d taskmanager"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: tms-backend
+    # Run migrations (and optional admin seed) before serving — schema is
+    # managed by migrations, not sync.
+    command: sh -c "npm run migrate && npm run seed && node server.js"
+    ports:
+      - "8005:8005"
+    environment:
+      - NODE_ENV=production
+      - PORT=8005
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=tms_user
+      - DB_PASSWORD=${DB_PASSWORD:-tms_password}
+      - DB_NAME=taskmanager
+      - DB_DIALECT=postgres
+      - DB_SYNC=off
+      # MUST be supplied via env / secrets manager (>=32 chars). No safe default.
+      - JWT_SECRET=${JWT_SECRET:?set JWT_SECRET in a .env file or your environment}
+      - JWT_EXPIRES_IN=7d
+      - CORS_ORIGINS=http://localhost:3005
+      # Optional: bootstrap an admin account on first run.
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+    volumes:
+      - uploads:/usr/src/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8005/api
+    container_name: tms-frontend
+    ports:
+      - "3005:80"
+    depends_on:
+      - backend
+    restart: on-failure
+
+volumes:
+  pgdata:
+  uploads:
