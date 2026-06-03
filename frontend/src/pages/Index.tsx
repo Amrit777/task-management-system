@@ -18,8 +18,9 @@ interface Stats {
   todoCount: number;
   inProgressCount: number;
   completedCount: number;
-  totalProjects: number;
-  totalUsers: number;
+  // Admin-only: the backend returns these only for admins.
+  totalProjects?: number;
+  totalUsers?: number;
 }
 
 const Index = () => {
@@ -84,12 +85,21 @@ const Index = () => {
           description="Currently being worked on"
           icon={<Boxes className="h-4 w-4" />}
         />
-        <StatsCard
-          title="Team Members"
-          value={stats?.totalUsers?.toString() || "0"}
-          description={stats?.totalProjects + " active projects"}
-          icon={<Users className="h-4 w-4" />}
-        />
+        {user?.role === "admin" ? (
+          <StatsCard
+            title="Team Members"
+            value={stats?.totalUsers?.toString() || "0"}
+            description={(stats?.totalProjects ?? 0) + " active projects"}
+            icon={<Users className="h-4 w-4" />}
+          />
+        ) : (
+          <StatsCard
+            title="My Projects"
+            value={projects.length.toString()}
+            description={projects.length === 1 ? "1 project" : `${projects.length} projects`}
+            icon={<Users className="h-4 w-4" />}
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
